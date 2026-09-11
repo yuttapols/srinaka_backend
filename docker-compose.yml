@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: srinaka
+      POSTGRES_USER: srinaka
+      POSTGRES_PASSWORD: srinaka
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U srinaka"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      DB_URL: jdbc:postgresql://postgres:5432/srinaka
+      DB_USERNAME: srinaka
+      DB_PASSWORD: srinaka
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:4200}
+      ADMIN_SEED_USERNAME: ${ADMIN_SEED_USERNAME:-admin}
+      ADMIN_SEED_PASSWORD: ${ADMIN_SEED_PASSWORD}
+    ports:
+      - "8080:8080"
+
+volumes:
+  postgres_data:
