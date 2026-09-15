@@ -1,6 +1,7 @@
 package com.srinaka.auth.controller;
 
 import com.srinaka.auth.dto.ChangePasswordRequest;
+import com.srinaka.auth.dto.LineLoginRequest;
 import com.srinaka.auth.dto.LoginRequest;
 import com.srinaka.auth.dto.LoginResponse;
 import com.srinaka.auth.dto.MeResponse;
@@ -29,6 +30,12 @@ public class AuthController {
     @PostMapping("/login")
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
         LoginResponse response = authService.login(request, httpRequest.getRemoteAddr());
+        return ApiResponse.success(response, "Login successful.");
+    }
+
+    @PostMapping("/line-login")
+    public ApiResponse<LoginResponse> lineLogin(@Valid @RequestBody LineLoginRequest request, HttpServletRequest httpRequest) {
+        LoginResponse response = authService.loginWithLine(request, httpRequest.getRemoteAddr());
         return ApiResponse.success(response, "Login successful.");
     }
 

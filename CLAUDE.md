@@ -26,15 +26,20 @@
 
 ```
 com.srinaka/
-  common/   response wrapper, error code, exception handler, base entity, security util, audit
-  auth/     login/refresh/logout/me/change-password, JWT issue/verify
-  user/     User entity (Admin/Supervisor/Employee/Customer), registration, profile
-  menu/     menu_items/menu_permissions — sidebar เท่านั้น ไม่ใช่ catalog สินค้า/บริการสปา
-  admin/    login_logs viewer
+  common/     response wrapper, error code, exception handler, base entity, security util, audit
+  auth/       login/refresh/logout/me/change-password, JWT issue/verify, LINE OAuth client
+  user/       User entity (Admin/Supervisor/Employee/Customer), registration, profile, LINE link
+  menu/       menu_items/menu_permissions — sidebar เท่านั้น ไม่ใช่ catalog สินค้า/บริการสปา
+  admin/      login_logs viewer
+  catalog/    service_categories/services (FR-4)
+  promotion/  promotions + promotion_services join (FR-5)
+  booking/    bookings — สร้าง/มอบหมาย/mark completed (FR-6)
+  shop/       shop_info — ข้อมูลติดต่อร้าน แถวเดียว (FR-11)
 ```
 
-โดเมนธุรกิจสปา (catalog, promotion, booking, payment, refund, rating, report, employee schedule) ยังไม่มี
-module — เริ่มสร้างตอน Phase 2 เป็นต้นไปตาม `09-implementation-roadmap.md`
+Payment/refund/rating/report/employee-schedule ยังไม่มี module — เป็นงาน Phase 3-4 ตาม
+`09-implementation-roadmap.md` **Cloudinary/`FileStorageService` ยังไม่ implement** — `services.image_url`/
+`image_public_id` เป็นแค่ column เปล่าตอนนี้ Supervisor ยังอัปโหลดรูปผ่าน API ไม่ได้จนกว่าจะต่อ Cloudinary จริง
 
 ## Response Pattern (บังคับทุก endpoint)
 
@@ -49,8 +54,9 @@ service layer เท่านั้น ห้าม throw จาก controller, 
 
 - ทุก endpoint บังคับ role ด้วย `@PreAuthorize("hasRole('...')")` และตรวจ ownership เพิ่มที่ service layer
   ถ้ามีแนวคิด ownership ในโดเมนนั้น (Phase 1 ยังไม่มี — ระบบ single-shop ไม่มี `shop_id`/multi-tenant)
-- Public endpoint (`/api/auth/login`, `/api/auth/refresh`, `/api/customers/register`, swagger,
-  `/actuator/health`) ต้อง permitAll ที่ `SecurityConfig` ตั้งแต่ filter-chain level — ไม่ใช่แค่ optional-auth
+- Public endpoint (`/api/auth/{login,refresh,line-login}`, `/api/customers/{register,register-line}`,
+  `GET /api/{services,service-categories,promotions,shop-info}/**`, swagger, `/actuator/health`) ต้อง
+  permitAll ที่ `SecurityConfig` ตั้งแต่ filter-chain level — ไม่ใช่แค่ optional-auth
 - Password เก็บด้วย BCrypt เท่านั้น, JWT access token อายุสั้น (~30 นาที) + refresh token เก็บใน DB (hash)
   เพื่อ revoke ได้, rotate ทุกครั้งที่ `/refresh`
 - Login ผิดครบ 5 ครั้งต่อ username → lock ชั่วคราว 15 นาที (`LoginAttemptService`, in-memory ต่อ instance —
@@ -61,15 +67,32 @@ service layer เท่านั้น ห้าม throw จาก controller, 
 - ห้าม hardcode secret ที่ดูเหมือนใช้งานได้จริงใน `application.yml` (บทเรียนจาก share_money ที่เคย leak
   Cloudinary key + DB password ผ่าน default fallback) — ใช้ placeholder ที่ดูปลอมชัดเจนเท่านั้น
 
-## OTP / Phone Verification — ยังไม่ทำ (ตั้งใจ)
+## Customer Verification — LINE OAuth เท่านั้น (ไม่ใช่ SMS OTP, ไม่ใช่ Google)
 
-`users.phone_verified_at` มีอยู่ใน schema แล้วแต่**ไม่มี mechanism ทำให้ถูก set เป็นค่าที่ไม่ null เลยในตอนนี้**
-— ทีมยังไม่ตัดสินใจว่าจะใช้ SMS OTP หรือเปลี่ยนไปใช้ Google login แทน (ดู `01-requirements.md` หัวข้อ "ยังไม่
-ตัดสินใจ") Customer สมัครสมาชิกได้ปกติผ่าน `POST /api/customers/register` แต่ `phone_verified_at` จะเป็น
-`null` ตลอดจนกว่าจะมีการตัดสินใจและ implement กลไก verify จริง — **ไม่กระทบ Phase 1** เพราะยังไม่มี booking
-ที่ต้องเช็คเงื่อนไขนี้ (เงื่อนไข "ต้อง verify ก่อนจอง" อยู่ใน FR-6.1 ซึ่งเป็นงานของ Phase 2) ถ้าแก้เบอร์โทรผ่าน
-`PUT /api/profile` ระบบจะ reset `phone_verified_at` เป็น `null` ให้อัตโนมัติถ้าเป็น role `CUSTOMER` และเบอร์
-เปลี่ยนจริง (forward-compatible กับตอนที่ verify mechanism มาแล้ว)
+`users.verified_at` (เดิมชื่อ `phone_verified_at` ก่อน `V4__customer_line_verification.sql` — เปลี่ยนชื่อ
+เพราะไม่เกี่ยวกับเบอร์โทรอีกต่อไป) เป็น timestamp ที่ set ทันทีเมื่อบัญชีผูกกับ LINE แล้วเท่านั้น — **Google
+login เคยพิจารณาแต่ตัดออกแล้ว** เพราะ Google Cloud บังคับ billing verification ที่มีค่าใช้จ่ายล่วงหน้า
+(ดู `01-requirements.md` FR-1.7–FR-1.9)
+
+**สมัครสมาชิกได้ 2 ทาง**:
+- `POST /api/customers/register` — กรอกเอง (username/password/ชื่อ/เบอร์โทร) → `verified_at = null`
+- `POST /api/customers/register-line` — เพิ่ม `code`+`redirectUri` จาก LINE OAuth callback →
+  `verified_at = now()` ทันที, ผูก `line_user_id`
+
+**ลิงก์บัญชีทีหลัง** (สำหรับคนที่สมัครกรอกเอง): `POST /api/profile/link-line` (ต้อง login) — ผูก
+`line_user_id` เข้ากับ user เดิม + set `verified_at`
+
+**Login ผ่าน LINE** (บัญชีที่ผูกแล้ว): `POST /api/auth/line-login` — ถ้ายังไม่เคยผูกบัญชีจะได้
+`ERR_LINE_ACCOUNT_NOT_REGISTERED` (ให้ frontend พาไปหน้าสมัคร ไม่ใช่ auto-create)
+
+**`auth/service/LineOAuthClient.java`** เป็นตัวกลางเดียวที่คุยกับ LINE API (แลก `code` → access token →
+เรียก `/v2/profile`) — ทุก flow ข้างบนเรียกผ่านตัวนี้ทั้งหมด ห้ามเขียนซ้ำ `RestClient` call เอง
+ต้องตั้ง env var `LINE_CHANNEL_ID`/`LINE_CHANNEL_SECRET` (จาก LINE Developers Console, channel ประเภท
+"LINE Login") — `redirectUri` ส่งมาจาก frontend ทุกครั้ง (ต้องตรงกับ Callback URL ที่ตั้งไว้ใน LINE Console
+เป๊ะ ๆ) ไม่ได้อ่านจาก env ฝั่ง backend
+
+แก้เบอร์โทรผ่าน `PUT /api/profile` **ไม่กระทบ `verified_at` เลย** — verify มาจากการลิงก์ LINE เท่านั้น
+ไม่เกี่ยวกับเบอร์โทรอีกต่อไป (ต่างจากดีไซน์เดิมที่เคยผูกกับ SMS OTP)
 
 ## Domain Reference
 
@@ -93,14 +116,17 @@ payment, refund, report, rating เด็ดขาด — ตอนสร้า�
 
 ## Roadmap
 
-ดู `09-implementation-roadmap.md` เต็ม — Phase 1 (Foundation/Auth/RBAC/Profile) กำลังอยู่ระหว่างทำใน repo นี้
-ดูสถานะจริงจาก git log ไม่ใช่จากไฟล์นี้
+ดู `09-implementation-roadmap.md` เต็ม — ดูสถานะจริงจาก git log ไม่ใช่จากไฟล์นี้
 
-1. **Foundation, Auth, RBAC, Profile** (กำลังทำ) — schema พื้นฐาน (users/refresh_tokens/login_logs/
+1. **Foundation, Auth, RBAC, Profile** ✅ เสร็จ — schema พื้นฐาน (users/refresh_tokens/login_logs/
    menu_items/menu_permissions), auth lifecycle, RBAC, CRUD user 3 role แรก (Admin สร้าง Supervisor,
-   Supervisor สร้าง Employee, Customer self-register), profile, menu API, login log viewer, Swagger,
-   health endpoint, deploy scaffolding — **ไม่รวม OTP/phone verification** (ดูหัวข้อด้านบน)
-2. Product/Service Catalog, Promotion, Booking
+   Supervisor สร้าง Employee), profile, menu API, login log viewer, Swagger, health endpoint, deploy
+   scaffolding
+2. **Product/Service Catalog, Promotion, Booking, Customer register (LINE)** — โค้ดเขียนเสร็จแล้ว
+   (`catalog/`, `promotion/`, `booking/`, `shop/`, LINE auth flow), **ยังไม่ได้รัน migration จริงกับ DB /
+   ยังไม่ได้ทดสอบ end-to-end** เพราะยังไม่มี Postgres รันอยู่ตอน implement — ต้องรัน `docker-compose up -d
+   postgres` แล้วทดสอบ flow จริงก่อนถือว่า Phase 2 เสร็จสมบูรณ์ **ยังไม่มี Cloudinary/image upload** สำหรับรูป
+   สินค้า/บริการ (FR-4.2) — ทำทีหลัง
 3. Payment (slip/cash), Walk-in sale (POS-lite), Cancel/Refund, Rating
 4. Report, Employee Schedule, Admin Ops, Release
 5. Issue — รีวิวหาบั๊ก/ช่องโหว่/ช่องว่างทั้งระบบก่อน launch จริง (ไม่ใช่ feature ใหม่)

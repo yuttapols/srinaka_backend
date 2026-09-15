@@ -1,6 +1,8 @@
 package com.srinaka.user.service;
 
-import com.srinaka.common.domain.UserRole;
+import com.srinaka.auth.dto.LineLoginRequest;
+import com.srinaka.auth.dto.LineProfile;
+import com.srinaka.auth.service.LineOAuthClient;
 import com.srinaka.common.error.BusinessException;
 import com.srinaka.common.error.ErrorCode;
 import com.srinaka.user.dto.UpdateProfileRequest;
@@ -13,12 +15,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.ObjectUtils;
 
+import java.time.Instant;
+
 @Service
 @RequiredArgsConstructor
 public class ProfileService {
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final LineOAuthClient lineOAuthClient;
 
     @Transactional
     public UserResponse updateProfile(Long userId, UpdateProfileRequest request) {
@@ -32,10 +37,22 @@ public class ProfileService {
 
         user.setFullName(request.fullName());
         user.setPhone(request.phone());
-        if (phoneChanged && user.getRole() == UserRole.CUSTOMER) {
-            user.setPhoneVerifiedAt(null);
+
+        return userMapper.toResponse(user);
+    }
+
+    @Transactional
+    public UserResponse linkLine(Long userId, LineLoginRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        LineProfile profile = lineOAuthClient.fetchProfile(request.code(), request.redirectUri());
+        if (userRepository.existsByLineUserId(profile.lineUserId())) {
+            throw new BusinessException(ErrorCode.LINE_ACCOUNT_ALREADY_LINKED);
         }
 
+        user.setLineUserId(profile.lineUserId());
+        user.setVerifiedAt(Instant.now());
         return userMapper.toResponse(user);
     }
 }

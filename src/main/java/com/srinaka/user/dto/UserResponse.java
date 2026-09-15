@@ -10,7 +10,7 @@ public record UserResponse(
         String fullName,
         String phone,
         UserRole role,
-        Instant phoneVerifiedAt,
+        Instant verifiedAt,
         boolean active
 ) {
 }

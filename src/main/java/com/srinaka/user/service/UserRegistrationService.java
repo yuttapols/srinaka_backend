@@ -1,11 +1,14 @@
 package com.srinaka.user.service;
 
+import com.srinaka.auth.dto.LineProfile;
+import com.srinaka.auth.service.LineOAuthClient;
 import com.srinaka.common.domain.UserRole;
 import com.srinaka.common.error.BusinessException;
 import com.srinaka.common.error.ErrorCode;
 import com.srinaka.user.dto.CreateEmployeeRequest;
 import com.srinaka.user.dto.CreateSupervisorRequest;
 import com.srinaka.user.dto.RegisterCustomerRequest;
+import com.srinaka.user.dto.RegisterCustomerViaLineRequest;
 import com.srinaka.user.dto.UserResponse;
 import com.srinaka.user.entity.User;
 import com.srinaka.user.mapper.UserMapper;
@@ -15,6 +18,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 
 @Service
@@ -24,10 +28,24 @@ public class UserRegistrationService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
+    private final LineOAuthClient lineOAuthClient;
 
     @Transactional
     public UserResponse registerCustomer(RegisterCustomerRequest request) {
         User customer = createUser(request.username(), request.password(), request.fullName(), request.phone(), UserRole.CUSTOMER);
+        return userMapper.toResponse(customer);
+    }
+
+    @Transactional
+    public UserResponse registerCustomerViaLine(RegisterCustomerViaLineRequest request) {
+        LineProfile profile = lineOAuthClient.fetchProfile(request.code(), request.redirectUri());
+        if (userRepository.existsByLineUserId(profile.lineUserId())) {
+            throw new BusinessException(ErrorCode.LINE_ACCOUNT_ALREADY_LINKED);
+        }
+
+        User customer = createUser(request.username(), request.password(), request.fullName(), request.phone(), UserRole.CUSTOMER);
+        customer.setLineUserId(profile.lineUserId());
+        customer.setVerifiedAt(Instant.now());
         return userMapper.toResponse(customer);
     }
 

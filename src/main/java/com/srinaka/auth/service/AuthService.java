@@ -1,6 +1,8 @@
 package com.srinaka.auth.service;
 
 import com.srinaka.auth.dto.ChangePasswordRequest;
+import com.srinaka.auth.dto.LineLoginRequest;
+import com.srinaka.auth.dto.LineProfile;
 import com.srinaka.auth.dto.LoginRequest;
 import com.srinaka.auth.dto.LoginResponse;
 import com.srinaka.auth.dto.MeResponse;
@@ -36,6 +38,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final AuditLogService auditLogService;
     private final LoginAttemptService loginAttemptService;
+    private final LineOAuthClient lineOAuthClient;
 
     @Value("${app.jwt.refresh-token-ttl-seconds}")
     private long refreshTokenTtlSeconds;
@@ -54,6 +57,25 @@ public class AuthService {
         }
 
         loginAttemptService.recordSuccess(request.username());
+
+        String accessToken = jwtService.generateAccessToken(user);
+        String refreshToken = issueRefreshToken(user);
+
+        auditLogService.record(user.getUsername(), user.getRole(), AuditActions.LOGIN, ipAddress);
+
+        return new LoginResponse(accessToken, refreshToken, jwtService.getAccessTokenTtlSeconds(),
+                user.getRole(), user.getUsername(), user.getFullName());
+    }
+
+    @Transactional
+    public LoginResponse loginWithLine(LineLoginRequest request, String ipAddress) {
+        LineProfile profile = lineOAuthClient.fetchProfile(request.code(), request.redirectUri());
+
+        User user = userRepository.findByLineUserId(profile.lineUserId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.LINE_ACCOUNT_NOT_REGISTERED));
+        if (!user.isActive()) {
+            throw new BusinessException(ErrorCode.ACCOUNT_DISABLED);
+        }
 
         String accessToken = jwtService.generateAccessToken(user);
         String refreshToken = issueRefreshToken(user);

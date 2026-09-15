@@ -43,8 +43,11 @@ public class User extends BaseEntity {
     @Column(nullable = false, length = 20)
     private UserRole role;
 
-    @Column(name = "phone_verified_at")
-    private Instant phoneVerifiedAt;
+    @Column(name = "line_user_id", length = 255)
+    private String lineUserId;
+
+    @Column(name = "verified_at")
+    private Instant verifiedAt;
 
     @Column(nullable = false)
     private boolean active = true;
