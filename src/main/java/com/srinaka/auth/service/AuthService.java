@@ -65,7 +65,7 @@ public class AuthService {
         auditLogService.record(user.getUsername(), user.getRole(), AuditActions.LOGIN, ipAddress);
 
         return new LoginResponse(accessToken, refreshToken, jwtService.getAccessTokenTtlSeconds(),
-                user.getRole(), user.getUsername(), user.getFullName());
+                user.getRole(), user.getUsername(), user.getFullName(), user.getVerifiedAt());
     }
 
     @Transactional
@@ -84,7 +84,7 @@ public class AuthService {
         auditLogService.record(user.getUsername(), user.getRole(), AuditActions.LOGIN, ipAddress);
 
         return new LoginResponse(accessToken, refreshToken, jwtService.getAccessTokenTtlSeconds(),
-                user.getRole(), user.getUsername(), user.getFullName());
+                user.getRole(), user.getUsername(), user.getFullName(), user.getVerifiedAt());
     }
 
     private User registerCustomerFromLine(LineProfile profile) {
@@ -133,7 +133,7 @@ public class AuthService {
     @Transactional(readOnly = true)
     public MeResponse getCurrentUser(Long userId) {
         return userRepository.findById(userId)
-                .map(user -> new MeResponse(user.getUsername(), user.getRole(), user.getFullName()))
+                .map(user -> new MeResponse(user.getUsername(), user.getRole(), user.getFullName(), user.getVerifiedAt()))
                 .orElse(null);
     }
 
