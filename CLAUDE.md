@@ -75,15 +75,23 @@ login เคยพิจารณาแต่ตัดออกแล้ว** �
 (ดู `01-requirements.md` FR-1.7–FR-1.9)
 
 **สมัครสมาชิกได้ 2 ทาง**:
-- `POST /api/customers/register` — กรอกเอง (username/password/ชื่อ/เบอร์โทร) → `verified_at = null`
-- `POST /api/customers/register-line` — เพิ่ม `code`+`redirectUri` จาก LINE OAuth callback →
-  `verified_at = now()` ทันที, ผูก `line_user_id`
+- `POST /api/customers/register` — กรอกเอง (username/password/ชื่อ/เบอร์โทร **บังคับกรอกหมด**) →
+  `verified_at = null`
+- `POST /api/auth/line-login` — endpoint เดียวทำทั้ง login และ register (**เปลี่ยนดีไซน์แล้ว 2026-09-18** —
+  เดิมแยก `/register-line` ออกมาต่างหาก ตอนนี้รวมเป็นตัวเดียว): แลก `code` เป็น LINE profile ก่อน แล้วเช็คว่า
+  เคยมี user ผูก `line_user_id` นี้อยู่แล้วหรือยัง — **ถ้ามี** = login ปกติ, **ถ้าไม่มี** = สร้าง Customer ใหม่ให้
+  อัตโนมัติในคำขอเดียวกันเลย (`username` auto-gen เป็น `"line_" + lineUserId`, `password_hash = null`,
+  `phone = null`, `fullName` = LINE display name, `verified_at = now()` ทันที) แล้ว login ต่อเลยในคำขอเดียว
+  — **ไม่มีฟอร์มคั่นระหว่างทาง ไม่ถาม username/password/เบอร์โทรเลย** (ต่างจาก FR-1.7 เดิมที่เขียนไว้ว่าทุกทาง
+  ต้องกรอกครบ — บัญชี LINE-only เป็นข้อยกเว้นตอนนี้ตามที่ user ยืนยันแล้วว่าเบอร์โทร optional สำหรับทางนี้)
+- ลูกค้าที่สมัครผ่าน LINE **เพิ่มเบอร์โทรทีหลังได้** ผ่าน `PUT /api/profile` ปกติ เมื่อไหร่ก็ได้ ไม่บังคับ
 
-**ลิงก์บัญชีทีหลัง** (สำหรับคนที่สมัครกรอกเอง): `POST /api/profile/link-line` (ต้อง login) — ผูก
-`line_user_id` เข้ากับ user เดิม + set `verified_at`
+**ลิงก์บัญชีทีหลัง** (สำหรับคนที่สมัครกรอกเองแล้วอยากผูก LINE เพิ่ม): `POST /api/profile/link-line`
+(ต้อง login ด้วย username/password ก่อน) — ผูก `line_user_id` เข้ากับ user เดิม + set `verified_at`
 
-**Login ผ่าน LINE** (บัญชีที่ผูกแล้ว): `POST /api/auth/line-login` — ถ้ายังไม่เคยผูกบัญชีจะได้
-`ERR_LINE_ACCOUNT_NOT_REGISTERED` (ให้ frontend พาไปหน้าสมัคร ไม่ใช่ auto-create)
+**`users.password_hash` เป็น nullable แล้ว** (`V9__line_only_customers.sql`) — บัญชีที่เกิดจาก LINE ล้วน ๆ
+ไม่มีรหัสผ่าน login ด้วย username/password ไม่ได้ (ตั้งใจ) `AuthService.login()` เช็ค null ก่อนเทียบรหัสผ่าน
+เสมอ (กัน NPE) — ถ้าจะเพิ่ม logic ที่เกี่ยวกับ password ที่ไหนอีก **ห้ามลืมเช็ค null ก่อน**
 
 **`auth/service/LineOAuthClient.java`** เป็นตัวกลางเดียวที่คุยกับ LINE API (แลก `code` → access token →
 เรียก `/v2/profile`) — ทุก flow ข้างบนเรียกผ่านตัวนี้ทั้งหมด ห้ามเขียนซ้ำ `RestClient` call เอง

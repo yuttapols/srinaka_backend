@@ -2,7 +2,6 @@ package com.srinaka.user.controller;
 
 import com.srinaka.common.response.ApiResponse;
 import com.srinaka.user.dto.RegisterCustomerRequest;
-import com.srinaka.user.dto.RegisterCustomerViaLineRequest;
 import com.srinaka.user.dto.UserResponse;
 import com.srinaka.user.service.UserRegistrationService;
 import jakarta.validation.Valid;
@@ -24,13 +23,6 @@ public class CustomerController {
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<UserResponse>> register(@Valid @RequestBody RegisterCustomerRequest request) {
         UserResponse response = userRegistrationService.registerCustomer(request);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(response, "Registration successful."));
-    }
-
-    @PostMapping("/register-line")
-    public ResponseEntity<ApiResponse<UserResponse>> registerViaLine(@Valid @RequestBody RegisterCustomerViaLineRequest request) {
-        UserResponse response = userRegistrationService.registerCustomerViaLine(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "Registration successful."));
     }

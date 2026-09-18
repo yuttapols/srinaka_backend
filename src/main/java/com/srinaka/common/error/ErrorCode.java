@@ -25,7 +25,6 @@ public enum ErrorCode {
     MENU_ITEM_NOT_FOUND("ERR_MENU_ITEM_NOT_FOUND", "Menu item not found", "The requested menu item was not found.", HttpStatus.NOT_FOUND),
 
     LINE_AUTH_FAILED("ERR_LINE_AUTH_FAILED", "LINE authentication failed", "Could not sign in with LINE. Please try again.", HttpStatus.UNAUTHORIZED),
-    LINE_ACCOUNT_NOT_REGISTERED("ERR_LINE_ACCOUNT_NOT_REGISTERED", "No account is linked to this LINE profile", "No account found for this LINE account. Please register first.", HttpStatus.NOT_FOUND),
     LINE_ACCOUNT_ALREADY_LINKED("ERR_LINE_ACCOUNT_ALREADY_LINKED", "This LINE account is already linked to another user", "This LINE account is already linked to another account.", HttpStatus.CONFLICT),
 
     SERVICE_CATEGORY_NOT_FOUND("ERR_SERVICE_CATEGORY_NOT_FOUND", "Service category not found", "The requested category was not found.", HttpStatus.NOT_FOUND),

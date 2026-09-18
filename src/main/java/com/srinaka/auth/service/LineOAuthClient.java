@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.srinaka.auth.dto.LineProfile;
 import com.srinaka.common.error.BusinessException;
 import com.srinaka.common.error.ErrorCode;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -11,7 +12,9 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 
+@Slf4j
 @Service
 public class LineOAuthClient {
 
@@ -50,7 +53,11 @@ public class LineOAuthClient {
                 throw new BusinessException(ErrorCode.LINE_AUTH_FAILED);
             }
             return response.accessToken();
+        } catch (RestClientResponseException ex) {
+            log.warn("LINE token exchange failed: status={}, body={}", ex.getStatusCode(), ex.getResponseBodyAsString());
+            throw new BusinessException(ErrorCode.LINE_AUTH_FAILED);
         } catch (RestClientException ex) {
+            log.warn("LINE token exchange failed", ex);
             throw new BusinessException(ErrorCode.LINE_AUTH_FAILED);
         }
     }
@@ -66,7 +73,11 @@ public class LineOAuthClient {
                 throw new BusinessException(ErrorCode.LINE_AUTH_FAILED);
             }
             return new LineProfile(response.userId(), response.displayName());
+        } catch (RestClientResponseException ex) {
+            log.warn("LINE profile fetch failed: status={}, body={}", ex.getStatusCode(), ex.getResponseBodyAsString());
+            throw new BusinessException(ErrorCode.LINE_AUTH_FAILED);
         } catch (RestClientException ex) {
+            log.warn("LINE profile fetch failed", ex);
             throw new BusinessException(ErrorCode.LINE_AUTH_FAILED);
         }
     }

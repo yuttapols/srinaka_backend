@@ -48,7 +48,8 @@ public class AuthService {
         loginAttemptService.assertNotLocked(request.username());
 
         User user = userRepository.findByUsernameIgnoreCase(request.username()).orElse(null);
-        if (user == null || !passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+        if (user == null || user.getPasswordHash() == null
+                || !passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             loginAttemptService.recordFailure(request.username());
             throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
         }
@@ -72,7 +73,7 @@ public class AuthService {
         LineProfile profile = lineOAuthClient.fetchProfile(request.code(), request.redirectUri());
 
         User user = userRepository.findByLineUserId(profile.lineUserId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.LINE_ACCOUNT_NOT_REGISTERED));
+                .orElseGet(() -> registerCustomerFromLine(profile));
         if (!user.isActive()) {
             throw new BusinessException(ErrorCode.ACCOUNT_DISABLED);
         }
@@ -84,6 +85,19 @@ public class AuthService {
 
         return new LoginResponse(accessToken, refreshToken, jwtService.getAccessTokenTtlSeconds(),
                 user.getRole(), user.getUsername(), user.getFullName());
+    }
+
+    private User registerCustomerFromLine(LineProfile profile) {
+        User user = new User();
+        user.setUsername("line_" + profile.lineUserId());
+        user.setPasswordHash(null);
+        user.setFullName(StringUtils.hasText(profile.displayName()) ? profile.displayName() : "LINE User");
+        user.setRole(UserRole.CUSTOMER);
+        user.setLineUserId(profile.lineUserId());
+        user.setVerifiedAt(Instant.now());
+        user.setActive(true);
+        userRepository.save(user);
+        return user;
     }
 
     @Transactional

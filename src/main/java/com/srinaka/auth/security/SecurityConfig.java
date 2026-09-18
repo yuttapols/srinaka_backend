@@ -45,7 +45,7 @@ public class SecurityConfig {
                         .accessDeniedHandler(restAccessDeniedHandler))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/login", "/api/auth/refresh", "/api/auth/line-login").permitAll()
-                        .requestMatchers("/api/customers/register", "/api/customers/register-line").permitAll()
+                        .requestMatchers("/api/customers/register").permitAll()
                         .requestMatchers(HttpMethod.GET,
                                 "/api/services/**", "/api/service-categories/**", "/api/promotions/**", "/api/shop-info/**")
                         .permitAll()
