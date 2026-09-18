@@ -37,7 +37,13 @@ public enum ErrorCode {
     CUSTOMER_NOT_VERIFIED("ERR_CUSTOMER_NOT_VERIFIED", "Customer must be verified before booking", "Please verify your account (link LINE) before booking.", HttpStatus.FORBIDDEN),
     INVALID_BOOKING_STATUS("ERR_INVALID_BOOKING_STATUS", "Booking is not in a valid status for this action", "This action cannot be performed on the booking in its current status.", HttpStatus.BAD_REQUEST),
 
-    SHOP_INFO_NOT_FOUND("ERR_SHOP_INFO_NOT_FOUND", "Shop info not found", "Shop information has not been initialized.", HttpStatus.NOT_FOUND);
+    SHOP_INFO_NOT_FOUND("ERR_SHOP_INFO_NOT_FOUND", "Shop info not found", "Shop information has not been initialized.", HttpStatus.NOT_FOUND),
+
+    EMPTY_FILE("ERR_EMPTY_FILE", "Uploaded file is empty", "The uploaded file is empty.", HttpStatus.BAD_REQUEST),
+    INVALID_FILE_TYPE("ERR_INVALID_FILE_TYPE", "Uploaded file type is not allowed", "Only JPG, PNG, or WebP images are allowed.", HttpStatus.BAD_REQUEST),
+    FILE_TOO_LARGE("ERR_FILE_TOO_LARGE", "Uploaded file exceeds the size limit", "The uploaded file is too large (max 5MB).", HttpStatus.BAD_REQUEST),
+    FILE_UPLOAD_FAILED("ERR_FILE_UPLOAD_FAILED", "File upload to storage failed", "File upload failed. Please try again.", HttpStatus.INTERNAL_SERVER_ERROR),
+    FILE_DELETE_FAILED("ERR_FILE_DELETE_FAILED", "File delete from storage failed", "File delete failed. Please try again.", HttpStatus.INTERNAL_SERVER_ERROR);
 
     private final String code;
     private final String desc;

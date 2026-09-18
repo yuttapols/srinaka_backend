@@ -8,9 +8,13 @@ import com.srinaka.catalog.repository.ServiceCategoryRepository;
 import com.srinaka.catalog.repository.SpaServiceRepository;
 import com.srinaka.common.error.BusinessException;
 import com.srinaka.common.error.ErrorCode;
+import com.srinaka.common.storage.FileStorageService;
+import com.srinaka.common.storage.FileValidator;
+import com.srinaka.common.storage.StoredFile;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -18,8 +22,11 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SpaServiceService {
 
+    private static final String IMAGE_FOLDER = "srinaka/services";
+
     private final SpaServiceRepository spaServiceRepository;
     private final ServiceCategoryRepository serviceCategoryRepository;
+    private final FileStorageService fileStorageService;
 
     @Transactional(readOnly = true)
     public List<SpaServiceResponse> listAll() {
@@ -59,7 +66,38 @@ public class SpaServiceService {
 
     @Transactional
     public void delete(Long id) {
-        spaServiceRepository.delete(getOrThrow(id));
+        SpaService service = getOrThrow(id);
+        deleteExistingImage(service);
+        spaServiceRepository.delete(service);
+    }
+
+    @Transactional
+    public SpaServiceResponse uploadImage(Long id, MultipartFile file) {
+        FileValidator.validateImage(file);
+        SpaService service = getOrThrow(id);
+
+        deleteExistingImage(service);
+
+        StoredFile stored = fileStorageService.upload(file, IMAGE_FOLDER, false);
+        service.setImagePublicId(stored.publicId());
+        service.setImageUrl(stored.secureUrl());
+
+        return toResponse(service);
+    }
+
+    @Transactional
+    public SpaServiceResponse deleteImage(Long id) {
+        SpaService service = getOrThrow(id);
+        deleteExistingImage(service);
+        service.setImagePublicId(null);
+        service.setImageUrl(null);
+        return toResponse(service);
+    }
+
+    private void deleteExistingImage(SpaService service) {
+        if (service.getImagePublicId() != null) {
+            fileStorageService.delete(service.getImagePublicId(), "image", false);
+        }
     }
 
     private void applyRequest(SpaService service, SpaServiceRequest request) {

@@ -38,8 +38,17 @@ com.srinaka/
 ```
 
 Payment/refund/rating/report/employee-schedule ยังไม่มี module — เป็นงาน Phase 3-4 ตาม
-`09-implementation-roadmap.md` **Cloudinary/`FileStorageService` ยังไม่ implement** — `services.image_url`/
-`image_public_id` เป็นแค่ column เปล่าตอนนี้ Supervisor ยังอัปโหลดรูปผ่าน API ไม่ได้จนกว่าจะต่อ Cloudinary จริง
+`09-implementation-roadmap.md`
+
+`common/storage/` (`FileStorageService` interface, `CloudinaryFileStorageService` impl, `CloudinaryConfig`,
+`FileValidator`) — **implement แล้ว** (2026-09-18), ลอก pattern จาก share_money_backend ตรง ๆ ตามที่ตั้งใจไว้
+ใช้กับรูปสินค้า/บริการก่อน (`POST/DELETE /api/supervisor/services/{id}/image`, public delivery ไม่ signed
+เพราะไม่ sensitive) — จะ reuse ตัวเดียวกันนี้ตอน Phase 3 สำหรับสลิป (ตอนนั้นต้องใช้ `authenticated=true` +
+`generateSignedUrl` แทน public URL ตรง ๆ) `CloudinaryConfig` ใช้ `new Cloudinary()` เปล่า ๆ — SDK อ่าน
+`CLOUDINARY_URL` จาก env ให้เองอัตโนมัติ **ต้องเพิ่ม `CLOUDINARY_URL` เข้า IntelliJ Run Configuration ด้วย**
+(อยู่ใน `.env` แล้วแต่ `.env` ไม่ถูกอ่านอัตโนมัติ — บทเรียนเดียวกับที่เจอกับ `LINE_CHANNEL_ID` ก่อนหน้านี้)
+`FileValidator` เช็ค magic byte จริงของไฟล์ (jpg/png/webp) ไม่เชื่อ extension/Content-Type header ตามกติกา
+เดิม, จำกัด 5MB
 
 ## Response Pattern (บังคับทุก endpoint)
 
