@@ -54,9 +54,10 @@ service layer เท่านั้น ห้าม throw จาก controller, 
 
 - ทุก endpoint บังคับ role ด้วย `@PreAuthorize("hasRole('...')")` และตรวจ ownership เพิ่มที่ service layer
   ถ้ามีแนวคิด ownership ในโดเมนนั้น (Phase 1 ยังไม่มี — ระบบ single-shop ไม่มี `shop_id`/multi-tenant)
-- Public endpoint (`/api/auth/{login,refresh,line-login}`, `/api/customers/{register,register-line}`,
+- Public endpoint (`/api/auth/{login,refresh,line-login}`, `/api/customers/register`,
   `GET /api/{services,service-categories,promotions,shop-info}/**`, swagger, `/actuator/health`) ต้อง
-  permitAll ที่ `SecurityConfig` ตั้งแต่ filter-chain level — ไม่ใช่แค่ optional-auth
+  permitAll ที่ `SecurityConfig` ตั้งแต่ filter-chain level — ไม่ใช่แค่ optional-auth (`/api/customers/
+  register-line` ถูกตัดออกแล้ว — รวมเข้ากับ `/api/auth/line-login` ตั้งแต่ 2026-09-18)
 - Password เก็บด้วย BCrypt เท่านั้น, JWT access token อายุสั้น (~30 นาที) + refresh token เก็บใน DB (hash)
   เพื่อ revoke ได้, rotate ทุกครั้งที่ `/refresh`
 - Login ผิดครบ 5 ครั้งต่อ username → lock ชั่วคราว 15 นาที (`LoginAttemptService`, in-memory ต่อ instance —
